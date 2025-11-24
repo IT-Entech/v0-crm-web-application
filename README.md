@@ -20,6 +20,7 @@ A comprehensive Customer Relationship Management system built with Next.js 16 an
 - Form validation with React Hook Form and Zod
 - Real-time data updates
 - Export functionality for reports
+- **Mock Data Mode** - Complete in-memory database for testing without backend
 
 ## Setup
 
@@ -29,7 +30,12 @@ Create a `.env.local` file in the root directory:
 
 \`\`\`env
 NEXT_PUBLIC_API_BASE_URL=https://your-dotnet-api.com
+
+# Optional: Force mock data even when API URL is set
+NEXT_PUBLIC_USE_MOCK_DATA=true
 \`\`\`
+
+**Note**: If `NEXT_PUBLIC_API_BASE_URL` is not set, the app automatically uses mock data mode.
 
 ### Installation
 
@@ -39,6 +45,44 @@ npm run dev
 \`\`\`
 
 The application will be available at `http://localhost:3000`
+
+## Mock Data Mode
+
+The application includes a complete mock data system for testing and development without requiring a backend API. This is perfect for frontend development, demos, and testing.
+
+### Demo Credentials
+
+Use these credentials to log in and explore different permission levels:
+
+| Role | Username | Password | Permissions |
+|------|----------|----------|-------------|
+| **Admin** | `admin` | `admin123` | Full access to all modules (create, read, update, delete) |
+| **Manager** | `manager` | `manager123` | Most operations except delete |
+| **Sales Rep** | `sales` | `sales123` | Limited to sales operations (no delete, no reports) |
+
+### What's Included
+
+The mock database contains realistic sample data:
+
+- **5 Contacts** - Including TechCorp Solutions, Innovate Labs, Startup Inc, MegaCorp International
+- **5 Leads** - In various stages (New, Contacted, Qualified, Converted, Lost)
+- **6 Opportunities** - Across all pipeline stages with values from $25k to $500k
+- **6 Tasks** - With different priorities and statuses
+- **Dashboard Metrics** - Revenue: $895k, Conversion Rate: 34.2%, Avg Deal Size: $133.5k
+- **Activity Feed** - Recent CRM activities across all modules
+- **Chart Data** - 6 months of sales trends and lead source analytics
+
+### Mock Features
+
+All CRUD operations work in mock mode:
+- ✅ Create new records (persists during session)
+- ✅ Update existing records
+- ✅ Delete records
+- ✅ Real-time dashboard updates
+- ✅ Form validation
+- ✅ Permission checks based on user role
+
+**Note**: Mock data resets when you refresh the page.
 
 ## Backend API Requirements
 
@@ -74,7 +118,10 @@ Your .NET 8 backend should implement the following endpoints:
 - `DELETE /api/tasks/:id` - Delete task
 
 ### Dashboard & Reports
-- `GET /api/dashboard` - Dashboard statistics and charts
+- `GET /api/dashboard/stats` - Dashboard statistics
+- `GET /api/dashboard/activities` - Recent activity feed
+- `GET /api/dashboard/sales-chart` - Sales trend data
+- `GET /api/dashboard/leads-by-source` - Lead source breakdown
 - `GET /api/reports?range=monthly` - Report data by time range
 
 ## Architecture
@@ -114,6 +161,9 @@ components/
 lib/
 ├── auth/               # Auth context and provider
 ├── api/                # API client
+├── mock-data/          # Mock database and API
+│   ├── mock-database.ts   # Sample data
+│   └── mock-api.ts        # API implementation
 └── utils.ts            # Utility functions
 
 types/
@@ -143,6 +193,8 @@ vercel deploy
 \`\`\`
 
 Ensure your backend API is accessible and CORS is configured to allow requests from your frontend domain.
+
+**For demo deployments**: You can deploy with mock data mode by not setting `NEXT_PUBLIC_API_BASE_URL` or setting `NEXT_PUBLIC_USE_MOCK_DATA=true` in your Vercel environment variables.
 
 ## License
 

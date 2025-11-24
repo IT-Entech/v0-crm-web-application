@@ -3,45 +3,27 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api/client"
-import { Users, Target, TrendingUp, CheckSquare, DollarSign } from "lucide-react"
+import { Users, Target, TrendingUp, CheckSquare, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { SalesChart } from "@/components/dashboard/sales-chart"
 import { LeadsBySourceChart } from "@/components/dashboard/leads-by-source-chart"
 import { OpportunityPipeline } from "@/components/dashboard/opportunity-pipeline"
 
-interface DashboardData {
-  stats: {
-    totalContacts: number
-    totalLeads: number
-    totalOpportunities: number
-    totalTasks: number
-    revenue: number
-    conversionRate: number
-  }
-  recentActivity: Array<{
-    id: string
-    type: string
-    description: string
-    timestamp: string
-  }>
-  salesData: Array<{
-    month: string
-    revenue: number
-    opportunities: number
-  }>
-  leadsBySource: Array<{
-    source: string
-    count: number
-  }>
-  pipelineStages: Array<{
-    stage: string
-    count: number
-    value: number
-  }>
-}
+import type { DashboardStats, Activity } from "@/lib/mock-data/mock-database"
+import type { Contact } from "@/types/contacts"
+import type { Lead } from "@/types/leads"
+import type { Opportunity } from "@/types/opportunities"
+import type { Task } from "@/types/tasks"
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [activities, setActivities] = useState<Activity[]>([])
+  const [salesData, setSalesData] = useState<{ month: string; revenue: number }[]>([])
+  const [leadsData, setLeadsData] = useState<{ source: string; count: number }[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -50,8 +32,26 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const response = await apiClient.get<DashboardData>("/api/dashboard")
-      setData(response)
+      const [statsRes, activitiesRes, salesRes, leadsSourceRes, contactsRes, leadsRes, opportunitiesRes, tasksRes] =
+        await Promise.all([
+          apiClient.get<DashboardStats>("/api/dashboard/stats"),
+          apiClient.get<Activity[]>("/api/dashboard/activities"),
+          apiClient.get<{ month: string; revenue: number }[]>("/api/dashboard/sales-chart"),
+          apiClient.get<{ source: string; count: number }[]>("/api/dashboard/leads-by-source"),
+          apiClient.get<Contact[]>("/api/contacts"),
+          apiClient.get<Lead[]>("/api/leads"),
+          apiClient.get<Opportunity[]>("/api/opportunities"),
+          apiClient.get<Task[]>("/api/tasks"),
+        ])
+
+      setStats(statsRes)
+      setActivities(activitiesRes)
+      setSalesData(salesRes)
+      setLeadsData(leadsSourceRes)
+      setContacts(contactsRes)
+      setLeads(leadsRes)
+      setOpportunities(opportunitiesRes)
+      setTasks(tasksRes)
     } catch (error) {
       console.error("[v0] Failed to load dashboard data:", error)
     } finally {
@@ -67,14 +67,31 @@ export default function DashboardPage() {
     )
   }
 
-  const stats = data?.stats || {
-    totalContacts: 0,
-    totalLeads: 0,
-    totalOpportunities: 0,
-    totalTasks: 0,
-    revenue: 0,
-    conversionRate: 0,
-  }
+  const pipelineStages = [
+    {
+      stage: "Prospecting",
+      count: opportunities.filter((o) => o.stage === "Prospecting").length,
+      value: opportunities.filter((o) => o.stage === "Prospecting").reduce((sum, o) => sum + o.amount, 0),
+    },
+    {
+      stage: "Qualification",
+      count: opportunities.filter((o) => o.stage === "Qualification").length,
+      value: opportunities.filter((o) => o.stage === "Qualification").reduce((sum, o) => sum + o.amount, 0),
+    },
+    {
+      stage: "Proposal",
+      count: opportunities.filter((o) => o.stage === "Proposal").length,
+      value: opportunities.filter((o) => o.stage === "Proposal").reduce((sum, o) => sum + o.amount, 0),
+    },
+    {
+      stage: "Negotiation",
+      count: opportunities.filter((o) => o.stage === "Negotiation").length,
+      value: opportunities.filter((o) => o.stage === "Negotiation").reduce((sum, o) => sum + o.amount, 0),
+    },
+  ]
+
+  const activeOpportunities = opportunities.filter((o) => !["Closed Won", "Closed Lost"].includes(o.stage)).length
+  const pendingTasks = tasks.filter((t) => t.status !== "Completed" && t.status !== "Cancelled").length
 
   return (
     <div className="space-y-6">
@@ -83,14 +100,84 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Welcome back! Here's an overview of your CRM.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">${stats?.totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="flex items-center text-green-500">
+                <ArrowUpRight className="h-3 w-3" />
+                {stats?.revenueChange}%
+              </span>
+              from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Opportunities</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{activeOpportunities}</div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="flex items-center text-red-500">
+                <ArrowDownRight className="h-3 w-3" />
+                {stats?.opportunitiesChange}%
+              </span>
+              from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats?.conversionRate}%</div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="flex items-center text-green-500">
+                <ArrowUpRight className="h-3 w-3" />
+                {stats?.conversionChange}%
+              </span>
+              from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Deal Size</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">${stats?.avgDealSize.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="flex items-center text-green-500">
+                <ArrowUpRight className="h-3 w-3" />
+                {stats?.dealSizeChange}%
+              </span>
+              from last month
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Contacts</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.totalContacts.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">{contacts.length}</div>
             <p className="text-xs text-muted-foreground">Active customer contacts</p>
           </CardContent>
         </Card>
@@ -101,19 +188,21 @@ export default function DashboardPage() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.totalLeads.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Potential customers</p>
+            <div className="text-2xl font-bold text-foreground">{leads.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {leads.filter((l) => l.status === "Qualified").length} qualified
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Opportunities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">All Opportunities</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.totalOpportunities.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Active deals in pipeline</p>
+            <div className="text-2xl font-bold text-foreground">{opportunities.length}</div>
+            <p className="text-xs text-muted-foreground">{activeOpportunities} active in pipeline</p>
           </CardContent>
         </Card>
 
@@ -123,30 +212,8 @@ export default function DashboardPage() {
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.totalTasks.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Tasks to complete</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">${stats.revenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Closed won deals</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">Lead to opportunity</p>
+            <div className="text-2xl font-bold text-foreground">{pendingTasks}</div>
+            <p className="text-xs text-muted-foreground">{tasks.length} total tasks</p>
           </CardContent>
         </Card>
       </div>
@@ -157,7 +224,7 @@ export default function DashboardPage() {
             <CardTitle className="text-foreground">Sales Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <SalesChart data={data?.salesData || []} />
+            <SalesChart data={salesData} />
           </CardContent>
         </Card>
 
@@ -166,7 +233,7 @@ export default function DashboardPage() {
             <CardTitle className="text-foreground">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentActivity activities={data?.recentActivity || []} />
+            <RecentActivity activities={activities} />
           </CardContent>
         </Card>
       </div>
@@ -177,7 +244,7 @@ export default function DashboardPage() {
             <CardTitle className="text-foreground">Leads by Source</CardTitle>
           </CardHeader>
           <CardContent>
-            <LeadsBySourceChart data={data?.leadsBySource || []} />
+            <LeadsBySourceChart data={leadsData} />
           </CardContent>
         </Card>
 
@@ -186,7 +253,7 @@ export default function DashboardPage() {
             <CardTitle className="text-foreground">Opportunity Pipeline</CardTitle>
           </CardHeader>
           <CardContent>
-            <OpportunityPipeline stages={data?.pipelineStages || []} />
+            <OpportunityPipeline stages={pipelineStages} />
           </CardContent>
         </Card>
       </div>

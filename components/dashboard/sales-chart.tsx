@@ -1,11 +1,10 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 
 interface SalesData {
   month: string
   revenue: number
-  opportunities: number
 }
 
 interface SalesChartProps {
@@ -22,6 +21,7 @@ export function SalesChart({ data }: SalesChartProps) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
         <XAxis dataKey="month" stroke="#a1a1a1" fontSize={12} tickLine={false} axisLine={false} />
         <YAxis
           stroke="#a1a1a1"
@@ -37,10 +37,9 @@ export function SalesChart({ data }: SalesChartProps) {
             borderRadius: "8px",
           }}
           labelStyle={{ color: "#ededed" }}
+          formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
         />
-        <Legend />
         <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Revenue" />
-        <Bar dataKey="opportunities" fill="#10b981" radius={[4, 4, 0, 0]} name="Opportunities" />
       </BarChart>
     </ResponsiveContainer>
   )
