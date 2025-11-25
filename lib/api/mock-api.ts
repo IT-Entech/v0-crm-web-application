@@ -15,7 +15,7 @@ import {
   delay,
   type Activity,
   type DashboardStats,
-} from "./mock-database"
+} from "../mock-data/mock-database"
 
 // In-memory storage (simulates database)
 const users = [...mockUsers]
